@@ -311,13 +311,10 @@ export default function StockCalculator() {
     const newPrices = {};
     let successCount = 0;
 
-    // 改用 for...of 迴圈配合 delay，避免瞬間觸發 API Rate Limit (429 Error)
     for (const sym of symbols) {
         if (!sym) continue;
         
-        // 確保有 .TW 後綴 (邏輯更新：只要是純英數字，就補 .TW)
         let querySym = sym.trim();
-        // 修改正則表達式，支援含英文的代號 (如 00675L)
         if (/^[0-9A-Z]{3,9}$/.test(querySym) && !querySym.includes('.')) {
              querySym += '.TW';
         }
@@ -325,7 +322,6 @@ export default function StockCalculator() {
         try {
             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${querySym}&token=${finnhubToken}`);
             
-            // 處理 429 錯誤
             if (res.status === 429) {
                 console.warn(`Rate limit hit for ${sym}, skipping...`);
                 continue; 
@@ -333,16 +329,18 @@ export default function StockCalculator() {
 
             const data = await res.json();
             
-            // 只有當股價 > 0 時才更新 (避免 API 回傳 0 導致錯誤覆蓋)
-            if (data && data.c > 0) {
-                newPrices[sym] = data.c;
+            // 優先使用 c (current), 若 c=0 且有 pc (previous close) 則用 pc
+            // 這是為了解決盤後或假日 Finnhub 可能回傳 c=0 的問題
+            const price = (data.c && data.c > 0) ? data.c : (data.pc && data.pc > 0 ? data.pc : 0);
+
+            if (price > 0) {
+                newPrices[sym] = price;
                 successCount++;
             }
         } catch (e) {
             console.error(`Fetch error for ${sym}:`, e);
         }
 
-        // 每次請求間隔 300 毫秒 (Finnhub 免費版限制每秒約 1-2 次較安全)
         await delay(300);
     }
 
@@ -397,8 +395,6 @@ export default function StockCalculator() {
     let symbol = inputSymbol.trim().toUpperCase();
     let stockId = symbol; 
     
-    // 智慧判斷：如果是純英數字 (3-9碼)，且不含點，就預設為台股 (如 00675L, 2330)
-    // 如果已經有 . (如 2330.TW)，就拆解出 ID
     if (/^[0-9A-Z]{3,9}$/.test(symbol) && !symbol.includes('.')) { 
         stockId = symbol;
         symbol += '.TW';
@@ -408,22 +404,35 @@ export default function StockCalculator() {
 
     try {
         const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${finnhubToken}`);
+        
+        // 增加詳細錯誤判斷
+        if (!quoteRes.ok) {
+            if (quoteRes.status === 401) throw new Error("API Key 無效或權限不足");
+            if (quoteRes.status === 403) throw new Error("無權限存取此市場資料");
+            if (quoteRes.status === 429) throw new Error("請求次數過多，請稍後再試");
+            throw new Error(`連線錯誤 (${quoteRes.status})`);
+        }
+
         const quoteData = await quoteRes.json();
 
+        // 嘗試抓取基本資料 (非必要)
         const profileRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${finnhubToken}`);
         const profileData = await profileRes.json();
 
-        if (quoteData.c === 0 && quoteData.d === null) {
-            setQuoteError("查無資料，請確認代號");
+        // 判斷邏輯更新：若 c=0 但有 pc，也視為有效 (盤後/假日模式)
+        const price = (quoteData.c && quoteData.c > 0) ? quoteData.c : (quoteData.pc && quoteData.pc > 0 ? quoteData.pc : 0);
+
+        if (price === 0) {
+            setQuoteError(`找不到 ${symbol} 的報價 (Finnhub 回傳 0)`);
         } else {
-            setBuyPrice(quoteData.c);
+            setBuyPrice(price);
             const mappedName = TW_STOCK_MAP[stockId];
             setStockName(mappedName || profileData.name || symbol); 
             if(symbol !== inputSymbol) setInputSymbol(symbol);
         }
     } catch (err) {
         console.error(err);
-        setQuoteError("連線錯誤");
+        setQuoteError(err.message || "查詢失敗");
     } finally {
         setLoadingQuote(false);
     }
