@@ -315,9 +315,12 @@ export default function StockCalculator() {
     for (const sym of symbols) {
         if (!sym) continue;
         
-        // 確保有 .TW 後綴
+        // 確保有 .TW 後綴 (邏輯更新：只要是純英數字，就補 .TW)
         let querySym = sym.trim();
-        if (/^\d{4,6}$/.test(querySym)) querySym += '.TW';
+        // 修改正則表達式，支援含英文的代號 (如 00675L)
+        if (/^[0-9A-Z]{3,9}$/.test(querySym) && !querySym.includes('.')) {
+             querySym += '.TW';
+        }
 
         try {
             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${querySym}&token=${finnhubToken}`);
@@ -394,7 +397,9 @@ export default function StockCalculator() {
     let symbol = inputSymbol.trim().toUpperCase();
     let stockId = symbol; 
     
-    if (/^\d{4,6}$/.test(symbol)) { 
+    // 智慧判斷：如果是純英數字 (3-9碼)，且不含點，就預設為台股 (如 00675L, 2330)
+    // 如果已經有 . (如 2330.TW)，就拆解出 ID
+    if (/^[0-9A-Z]{3,9}$/.test(symbol) && !symbol.includes('.')) { 
         stockId = symbol;
         symbol += '.TW';
     } else if (symbol.endsWith('.TW')) {
