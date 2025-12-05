@@ -84,7 +84,7 @@ const IconSearch = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
 );
 const IconSettings = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
 );
 const IconBox = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
@@ -163,6 +163,9 @@ const StatCard = ({ title, value, subValue, type = "neutral" }) => {
     </div>
   );
 };
+
+// 延遲函式
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default function StockCalculator() {
   // --- State ---
@@ -292,38 +295,58 @@ export default function StockCalculator() {
     localStorage.setItem('finnhub_token', finnhubToken);
   }, [finnhubToken]);
 
-  // 抓取庫存中所有股票的最新價格 (修復版)
+  // 抓取庫存中所有股票的最新價格 (修復版: 使用 for...of + delay)
   const fetchInventoryPrices = async () => {
-    if (!finnhubToken || inventory.length === 0) return;
+    if (!finnhubToken) {
+        alert("請先在右上角「設定」按鈕中輸入 API Key 才能更新報價");
+        setShowSettings(true);
+        return;
+    }
+    if (inventory.length === 0) return;
+    
     setIsRefreshing(true);
     
     // 取得不重複的股票代號
     const symbols = [...new Set(inventory.map(i => i.symbol))];
     const newPrices = {};
+    let successCount = 0;
 
-    // 改用 Promise.all 配合 map 內部的 try-catch，確保單一失敗不影響整體
-    await Promise.all(symbols.map(async (sym) => {
-        if (!sym) return;
+    // 改用 for...of 迴圈配合 delay，避免瞬間觸發 API Rate Limit (429 Error)
+    for (const sym of symbols) {
+        if (!sym) continue;
         
         // 確保有 .TW 後綴
         let querySym = sym.trim();
-        if (/^\d{4,6}$/.test(querySym)) querySym += '.TW'; // 如果是純數字，加上 .TW
+        if (/^\d{4,6}$/.test(querySym)) querySym += '.TW';
 
         try {
             const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${querySym}&token=${finnhubToken}`);
+            
+            // 處理 429 錯誤
+            if (res.status === 429) {
+                console.warn(`Rate limit hit for ${sym}, skipping...`);
+                continue; 
+            }
+
             const data = await res.json();
             
             // 只有當股價 > 0 時才更新 (避免 API 回傳 0 導致錯誤覆蓋)
             if (data && data.c > 0) {
-                newPrices[sym] = data.c; 
+                newPrices[sym] = data.c;
+                successCount++;
             }
         } catch (e) {
             console.error(`Fetch error for ${sym}:`, e);
         }
-    }));
+
+        // 每次請求間隔 300 毫秒 (Finnhub 免費版限制每秒約 1-2 次較安全)
+        await delay(300);
+    }
 
     if (Object.keys(newPrices).length > 0) {
         setCurrentPrices(prev => ({ ...prev, ...newPrices }));
+    } else if (successCount === 0 && symbols.length > 0) {
+        console.warn("更新失敗，可能是 API Key 無效或次數超限");
     }
     
     setIsRefreshing(false);
@@ -802,7 +825,7 @@ export default function StockCalculator() {
                           if (currentPrice) {
                               hasQuote = true;
                               marketValue = Math.round(group.totalShares * currentPrice);
-                              // 預估賣出成本 (使用當前全域設定做概算)
+                              // 預估賣出成本 (使用當前全域設定的預設值做概算)
                               const rawSellFee = Math.floor(marketValue * (feeRate / 100) * (discount >= 10 ? discount / 100 : discount / 10));
                               const estSellFee = Math.max(rawSellFee, minFee);
                               const estTax = Math.floor(marketValue * taxRate);
@@ -903,7 +926,7 @@ export default function StockCalculator() {
                                                     <span className="font-mono text-gray-500">@ ${item.buyPrice}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center text-xs text-gray-400 mb-2">
-                                                     <span>總成本 ${Math.round(item.buyCost).toLocaleString()}</span>
+                                                     <span>成本 ${Math.round(item.buyCost).toLocaleString()}</span>
                                                      <span>{item.createdAt?.seconds ? new Date(item.createdAt.seconds * 1000).toLocaleDateString() : (item.buyDate || '剛剛')}</span>
                                                 </div>
                                                 <div className="flex gap-2">
