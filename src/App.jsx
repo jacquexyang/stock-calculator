@@ -179,6 +179,7 @@ export default function StockCalculator() {
   const [finnhubToken, setFinnhubToken] = useState(() => localStorage.getItem('finnhub_token') || '');
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState('');
+  const [searchedQuote, setSearchedQuote] = useState(null); // 儲存搜尋到的完整報價資料 (含昨收)
   
   // 庫存即時報價
   const [currentPrices, setCurrentPrices] = useState({});
@@ -316,7 +317,7 @@ export default function StockCalculator() {
         
         let querySym = sym.trim();
         if (/^[0-9A-Z]{3,9}$/.test(querySym) && !querySym.includes('.')) {
-             querySym += '.TW';
+             querySym += '.TW'; // 自動補上 .TW
         }
 
         try {
@@ -330,7 +331,6 @@ export default function StockCalculator() {
             const data = await res.json();
             
             // 優先使用 c (current), 若 c=0 且有 pc (previous close) 則用 pc
-            // 這是為了解決盤後或假日 Finnhub 可能回傳 c=0 的問題
             const price = (data.c && data.c > 0) ? data.c : (data.pc && data.pc > 0 ? data.pc : 0);
 
             if (price > 0) {
@@ -391,6 +391,7 @@ export default function StockCalculator() {
 
     setLoadingQuote(true);
     setQuoteError('');
+    setSearchedQuote(null); // 重置搜尋結果
     
     let symbol = inputSymbol.trim().toUpperCase();
     let stockId = symbol; 
@@ -405,7 +406,6 @@ export default function StockCalculator() {
     try {
         const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${finnhubToken}`);
         
-        // 增加詳細錯誤判斷
         if (!quoteRes.ok) {
             if (quoteRes.status === 401) throw new Error("API Key 無效或權限不足");
             if (quoteRes.status === 403) throw new Error("無權限存取此市場資料");
@@ -414,12 +414,12 @@ export default function StockCalculator() {
         }
 
         const quoteData = await quoteRes.json();
+        setSearchedQuote(quoteData); // 儲存完整報價以便顯示昨收
 
-        // 嘗試抓取基本資料 (非必要)
         const profileRes = await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${finnhubToken}`);
         const profileData = await profileRes.json();
 
-        // 判斷邏輯更新：若 c=0 但有 pc，也視為有效 (盤後/假日模式)
+        // 判斷邏輯：若 c=0 但有 pc，也視為有效 (盤後/假日模式)
         const price = (quoteData.c && quoteData.c > 0) ? quoteData.c : (quoteData.pc && quoteData.pc > 0 ? quoteData.pc : 0);
 
         if (price === 0) {
@@ -470,13 +470,14 @@ export default function StockCalculator() {
         minFee,
         taxRate,
         createdAt: timestamp,
-        buyDate: buyDate // 額外儲存字串格式以便顯示
+        buyDate: buyDate 
       });
       
       setActiveTab('inventory');
       setStockName("");
       setInputSymbol("");
       setBuyPrice(0);
+      setSearchedQuote(null);
       // 日期重置回今天
       setBuyDate(new Date().toISOString().split('T')[0]);
     } catch (error) {
@@ -502,7 +503,6 @@ export default function StockCalculator() {
     if (!selectedStock) return;
     
     const rawSellTotal = sellPrice * selectedStock.shares;
-    // 使用彈窗內的設定進行計算，而非全域變數
     const rawSellFee = Math.floor(rawSellTotal * (sellFeeRate / 100) * (sellDiscount >= 10 ? sellDiscount / 100 : sellDiscount / 10));
     const finalSellFee = Math.max(rawSellFee, sellMinFee);
     const tax = Math.floor(rawSellTotal * sellTaxRate);
@@ -716,6 +716,26 @@ export default function StockCalculator() {
                             </button>
                         </div>
                         {quoteError && <div className="text-sm text-red-500 bg-red-50 p-2 rounded">{quoteError}</div>}
+
+                        {/* 搜尋結果顯示區 (新增) */}
+                        {searchedQuote && (
+                            <div className="flex gap-2 mb-2">
+                                <div 
+                                    onClick={() => setBuyPrice(searchedQuote.c)}
+                                    className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 rounded-lg p-2 text-center hover:bg-blue-100 transition"
+                                >
+                                    <div className="text-[10px] text-blue-500 uppercase font-bold tracking-wider">即時成交 (Current)</div>
+                                    <div className="text-xl font-bold text-blue-700">${searchedQuote.c}</div>
+                                </div>
+                                <div 
+                                    onClick={() => setBuyPrice(searchedQuote.pc)}
+                                    className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 rounded-lg p-2 text-center hover:bg-gray-100 transition"
+                                >
+                                    <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">昨日收盤 (Prev Close)</div>
+                                    <div className="text-xl font-bold text-gray-600">${searchedQuote.pc}</div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* 股票名稱 (可編輯) */}
                         <InputField label="股票名稱 (可手動修改)" type="text" value={stockName} onChange={setStockName} placeholder="查詢後自動帶入" />
